@@ -1,0 +1,80 @@
+/**
+ * Assignment 6 -- Prisoner's Dilemma -- 2ip90
+ * part Patch
+ * 
+ * @author Tom van Roozendaal
+ * @author Jeroen Julian Lampe
+ * assignment group 180
+ * 
+ * assignment copyright Kees Huizing
+ */
+package prisonersdilemma;
+
+import java.util.*;
+
+class Patch {
+    private boolean coop; // true = C; false = D
+    private double score; // score of the Patch
+    ArrayList<int[]> neighbours = new ArrayList<>();
+    private int amount;
+    
+    Patch(boolean cp, int x, int y, int nums) {
+        coop = cp;
+        amount = nums;
+            
+        // create arraylist of neighbours, dont add neighbours outside of the grid (50x50)
+        if( x > 0 ) {
+            if ( y > 0 ) {
+                neighbours.add(new int[]{x-1, y-1});
+            }
+            neighbours.add(new int[]{x-1, y});
+            if ( y < (amount-1) ) {
+                neighbours.add(new int[]{x-1, y+1});
+            }
+        }
+        
+        if ( y > 0 ) {
+            neighbours.add(new int[]{x, y-1});
+        }
+        
+        if ( y < (amount-1) ) {
+            neighbours.add(new int[]{x, y+1});
+        }
+        
+        if( x < (amount-1) ) {
+            if ( y > 0 ) {
+                neighbours.add(new int[]{x+1, y-1});
+            }
+            neighbours.add(new int[]{x+1, y});
+            if ( y < (amount-1) ) {
+                neighbours.add(new int[]{x+1, y+1});
+            }
+        }
+    }
+    
+    // returns true if and only if patch is cooperating
+    boolean isCooperating() {
+        return coop;
+    }
+    
+    // set strategy to C if isC is true and to D if false
+    void setCooperating(boolean isC) {
+        coop = isC;
+    }
+    
+    // change strategy from C to D and vice versa
+    // only used to manually change the stategy (by clicking)
+    void toggleStrategy() {
+        coop = !coop;
+    }
+    
+    // return score of this patch in current round
+    double getScore() {
+        return score;
+    }
+    
+    // set score of patch
+    void setScore( double sc ) {
+        score = sc;
+    }
+}

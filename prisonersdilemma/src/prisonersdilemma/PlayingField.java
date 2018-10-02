@@ -1,0 +1,274 @@
+/**
+ * Assignment 6 -- Prisoner's Dilemma -- 2ip90
+ * part PlayingField
+ * 
+ * @author Tom van Roozendaal
+ * @author Jeroen Julian Lampe
+ * assignment group 180
+ * 
+ * assignment copyright Kees Huizing
+ */
+package prisonersdilemma;
+
+import java.util.Random;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.awt.*;
+import java.awt.event.*;
+import javax.swing.*;
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+
+class PlayingField extends JPanel implements MouseListener{
+    private Patch[][] grid;
+    
+    // timer for this.step();
+    private Timer timer;
+    private TimerTask aTask;
+    private int ms;
+    private boolean[][] placeholderGrid; // doesnt change with step();
+    private boolean timerRunning;
+    private boolean ownScoreRule;
+    private boolean extraColors;
+    private double alpha; // defection award factor
+    
+    private int width; // width of the total grid
+    private int amount;
+    
+    PlayingField(int w, int num) {
+        ms = 1000;
+        alpha = 1.0;
+        width = w;
+        amount = num;
+        
+        grid = new Patch[amount][amount];
+        timerRunning = false;
+        this.addMouseListener( this );
+        
+        for(int x = 0; x < grid.length; x++) {
+            for(int y = 0; y < grid[0].length; y++) {
+                if ( this.random.nextInt(2) == 1 ) { // 50% chance of cooperating
+                    grid[x][y] = new Patch(true, x, y, amount);
+                } else {
+                    grid[x][y] = new Patch(false, x, y, amount);
+                }
+            }
+        }
+        
+        placeholderGrid = this.getGrid(); // copy grid
+    }
+    
+    public void setSpeed( int speed ){
+        ms = speed;
+    }
+    
+    public void startTimer() {
+        timerRunning = true;
+        timer = new Timer();
+        aTask = new TimerTask() {
+            
+            @Override
+            public void run() {
+                step(); 
+            }
+        };
+        // schedule task
+        timer.schedule(aTask, ms, ms);
+    }
+    
+    public boolean isTimerRunning() {
+        return timerRunning;   
+    }
+    
+    public void pauseTimer() {
+        this.aTask.cancel();
+        this.timerRunning = false;
+    }
+    
+    // random number generator
+    private static final long SEED = 37L; // seed for random number generator; any number goes
+    public static final Random random = new Random( SEED );         
+    
+    // painComponent override
+    @Override 
+    public void paintComponent(Graphics g) {
+        super.paintComponent(g); // clear
+        
+        for (int x = 0; x < grid.length; x++) {
+            for (int y = 0; y < grid[0].length; y++) {
+                
+                Color color;
+                
+                // change color according to grid
+                if ( this.getGrid()[x][y] == true ) {
+                    if ( this.getGrid()[x][y] == this.placeholderGrid[x][y] || extraColors == false ) {
+                        color = Color.BLUE;
+                    } else {
+                        //color = Color.ORANGE; // true -> false
+                        color = new Color(255, 100, 0);
+                    }
+                } else {
+                    if (this.getGrid()[x][y] == this.placeholderGrid[x][y] || extraColors == false ) {
+                        color = Color.RED;
+                    } else {
+                        //color = Color.CYAN; // false -> true
+                        color = new Color(0, 100, 255);
+                    }
+                }
+                
+                g.setColor(color);
+                g.fillRoundRect(x*(width/grid.length), y*(width/grid[0].length), (width/grid.length), (width/grid[0].length), (width/(grid.length * 2)), (width/(grid[0].length * 2)));
+            }
+        }
+    }
+    
+    /**
+     * calculate and execute one step in the simulation 
+     *   C    D
+     * C 1,1  0,a
+     * D a,0  0,0
+     */
+    public void step( ) {
+        boolean[][] inGrid = this.getGrid(); // grid changes with step();
+        placeholderGrid = this.getGrid(); // grid doesnt change with step();
+        
+        // set score
+        for (int x = 0; x < grid.length; x++) {
+            for (int y = 0; y < grid[0].length; y++) {
+                int friends = 0; // amount of cooperating neighbours
+                
+                // for all neighbours, count cooperators (friends)
+                for (int i = 0; i < grid[x][y].neighbours.size(); i++) {
+                    int[] arr = grid[x][y].neighbours.get(i);
+                    
+                    if (grid[arr[0]][arr[1]].isCooperating()) {
+                        friends++;
+                    }
+                }
+                
+                // setting the score of the patches
+                if (grid[x][y].isCooperating()) {
+                    grid[x][y].setScore( friends );
+                } else {
+                    grid[x][y].setScore( friends * alpha );
+                }
+            }
+        }
+        
+        /* determine next strategy
+         * by looking at the max score
+         */
+        for (int x = 0; x < grid.length; x++) {
+            for (int y = 0; y < grid[0].length; y++) {
+                double maxScore = 0;
+                int topScores = 0; // amount of top scores
+                int friendlyScores = 0; // amount of cooperating top scores
+                
+                // calculate the max score of the neighbours
+                for (int i = 0; i < grid[x][y].neighbours.size(); i++) {
+                    int[] arr = grid[x][y].neighbours.get(i);
+                    
+                    if (grid[arr[0]][arr[1]].getScore() > maxScore) {
+                        maxScore = grid[arr[0]][arr[1]].getScore();
+                    }
+                }
+                
+                // set next strat using the max score
+                for (int i = 0; i < grid[x][y].neighbours.size(); i++) {
+                    int[] arr = grid[x][y].neighbours.get(i);
+                    
+                    // count
+                    if ( grid[arr[0]][arr[1]].getScore() == maxScore ) {
+                        topScores++;
+                        
+                        if ( grid[arr[0]][arr[1]].isCooperating()) {
+                            friendlyScores++;
+                        }
+                    }
+                }
+                
+                // update rule + choose strategy randomly from top neighbours
+                if ( ownScoreRule && grid[x][y].getScore() >= maxScore ) {
+                    inGrid[x][y] = grid[x][y].isCooperating(); // stay the same if patch is its own top scoorder
+                } else {
+                    // random.nextInt(max - min + 1) + min
+                    int coopChance = random.nextInt(topScores) + 1;
+                    
+                    if ( coopChance <= friendlyScores) {
+                        inGrid[x][y] = true; // patch becomes C
+                    } else {
+                        inGrid[x][y] = false; // patch becomes D
+                    }
+                }
+            }
+        }
+        
+        // set patch strategies
+        setGrid( inGrid );
+    }
+    
+    public void stepBack() {
+        setGrid( placeholderGrid );
+    }
+    
+    public void setAlpha( double a ) {
+        alpha = ( a/10 ); // slider goes from 0 to 30
+    }
+    
+    public double getAlpha( ) {
+        return alpha;
+    }
+    
+    // return grid as 2D array of booleans
+    // true for cooperators, false for defectors
+    // precondition: grid is rectangular, has non-zero size and elements are non-null
+    public boolean[][] getGrid() {
+        boolean[][] resultGrid = new boolean[grid.length][grid[0].length];
+        for (int x = 0; x < grid.length; x++ ) {
+            for (int y = 0; y < grid[0].length; y++ ) {
+                resultGrid[x][y] = grid[x][y].isCooperating();
+            }
+        }
+        return resultGrid; 
+    }
+    
+    // sets grid according to parameter inGrid
+    // a patch should become cooperating if the corresponding
+    // item in inGrid is true
+    public void setGrid( boolean[][] inGrid) {
+        for (int x = 0; x < grid.length; x++ ) {
+            for (int y = 0; y < grid[0].length; y++ ) {
+                grid[x][y].setCooperating(inGrid[x][y]);
+            }
+        }
+        repaint();
+    }
+    
+    // displays changing patches as another color (orange/light blue) if true
+    public void setExtraColors( boolean eColors ) {
+        extraColors = eColors;
+        repaint();
+    }
+    
+    // allows patches to choose itself as top score if true
+    public void setRule( boolean rule ) {
+        ownScoreRule = rule;
+    }
+    
+    // MouseListener methods
+    @Override public void mouseReleased( MouseEvent e) { }
+    @Override public void mouseClicked( MouseEvent e) { }
+    @Override public void mouseEntered( MouseEvent e) { }
+    @Override public void mouseExited( MouseEvent e) { }
+    @Override 
+    public void mousePressed( MouseEvent e) {
+        int xP = e.getX()/(width/grid.length); // divide values by 16 to get the correct patch
+        int yP = e.getY()/(width/grid[0].length);
+        System.out.println( xP + " " + yP );
+        
+        if ( xP < amount && xP > -1 && yP < amount && yP > -1) {
+            grid[xP][yP].toggleStrategy();
+            repaint(); // automatically makes a cycle when mouse is pressed
+        }
+    }
+}
