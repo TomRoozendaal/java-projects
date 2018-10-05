@@ -2,3 +2,4 @@
 /sudokusolver/build/
 /simpleBinarySearchTree/nbproject/private/
 .idea
+*.xml
