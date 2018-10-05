@@ -13,50 +13,72 @@
 import java.util.*;
 
 public class gridPuzzle {
-    int grid[][];
-    int rows, cols;
+    private int grid[][];
+    private int challengeGrid[][];
+    private ArrayList<Integer> challengeNums = new ArrayList<>();
+    private int rows, cols;
 
-    int curr;
-    int solCount;
+    private int curr;
+    private int solCount;
 
     // starting position
-    int[] pos = new int[2];
+    private int[] pos = new int[2];
     /*
      *  relMoves is the array that contains the possible relative moves a player could make.
      *
-     *  predefined game:            {{-2, -2},{-3, 0},{-2, 2},{0, 3},{2, 2},{3, 0},{2, -2},{0, -3}};
-     *  horse moves (checkers):     {{-1, -2},{-2, -1},{-2, 1},{-1, 2},{1, 2},{2, 1},{2, -1},{1, -2}};
+     *  star pattern:           {{2, -2},{0, -3},{-2, -2},{-3, 0},{-2, 2},{0, 3},{2, 2},{3, 0}};
+     *  horsing (checkers):     {{-1, -2},{-2, -1},{-2, 1},{-1, 2},{1, 2},{2, 1},{2, -1},{1, -2}};
+     *  moonwalk:               {{-1, 0},{0, -1},{2, 2}}
      */
-    int[][] relMoves = {{-2, -2},{-3, 0},{-2, 2},{0, 3},{2, 2},{3, 0},{2, -2},{0, -3}};
+    private int[][] relMoves = {{2, -2},{0, -3},{-2, -2},{-3, 0},{-2, 2},{0, 3},{2, 2},{3, 0}};
 
+    // rotate the elements of the relMoves array
+    private int arrayShift = new Random().nextInt(relMoves.length);
     // randomize the initial conditions for looking
     // COULD POTENTIALLY INCREASE COMPUTATION TIME
     boolean randomInit = false;
-    // fully randomize the solution, will be disabled if printAllSolutions is set to true
-    // WILL MOST LIKELY INCREASE COMPUTATION TIME
+    boolean verbose = false;
+
+    // enabling this is probably not a good idea: repeating moves (which occurs more without randomization)
+    // usually spreads out the occupied cells in the grid more. this leaves more room for
+    // the player in a later states to move to.
+    // ! - WILL MOST LIKELY INCREASE COMPUTATION TIME
     boolean randomizeSolution = false;
+
     // print all possible solutions
-    // VERY TIME CONSUMING FOR LARGE GRID SIZES
+    // ! - VERY TIME CONSUMING FOR LARGE GRID SIZES
     boolean printAllSolutions = false;
 
-    gridPuzzle(int rows, int cols, int startingRow, int startingCol) {
+    private gridPuzzle(int rows, int cols, int startingRow, int startingCol) {
         this.rows = rows;
         this.cols = cols;
-        this.pos[0] = startingCol - 1;
-        this.pos[1] = startingRow - 1;
+        this.pos[0] = startingCol;
+        this.pos[1] = startingRow;
 
         this.solCount = 0;
         this.curr = 1;
         this.grid = new int[rows][cols];
-        this.grid[pos[0]][pos[1]] = curr;
+        grid[pos[0]][pos[1]] = curr;
+
+        // you can use the challenge grid to 'lock' certain cells with a value
+        this.challengeGrid = new int[grid.length][];
+        for(int i = 0; i < grid.length; i++)
+            this.challengeGrid[i] = grid[i].clone();
         this.curr++;
     }
 
-    void run() {
+    private void run() {
         if (randomInit){
             shuffleArray(relMoves);
+        } else if(arrayShift != 0){
+            rotateArray(relMoves, arrayShift);
+            System.out.println("relative moves: " + Arrays.deepToString(relMoves));
+        } else {
+            System.out.println("relative moves: " + Arrays.deepToString(relMoves));
         }
 
+        setupChallengeGrid();
+        printGrid(challengeGrid);
         solve();
 
         if (solCount == 1){
@@ -68,28 +90,41 @@ public class gridPuzzle {
         }
     }
     // ------------ misc ------------
-    void printGrid(){
-        for (int x = 0; x < grid[0].length; x++) {
+    private void setupChallengeGrid(){
+        //challengeGrid[2][4] = 25;
+
+        for (int x = 0; x < challengeGrid[0].length; x++) {
+            for (int y = 0; y < challengeGrid.length; y++) {
+                int p = challengeGrid[y][x];
+                if (p != 0) {
+                    challengeNums.add(p);
+                }
+            }
+        }
+    }
+
+    private void printGrid(int[][] grd){
+        for (int x = 0; x < grd[0].length; x++) {
             System.out.printf("%3s", "+------" );
         }
         System.out.println("+");
-        for (int y = 0; y < grid.length; y++) {
+        for (int y = 0; y < grd.length; y++) {
             if (y % rows == 0 && y != 0) {
                 System.out.println("-------------------------");
             }
-            for (int x = 0; x < grid[0].length; x++) {
+            for (int x = 0; x < grd[0].length; x++) {
                 if (x % cols == 0) {
                     System.out.print("| ");
                 }
-                if (grid[y][x] != 0) {
-                    System.out.printf("%3d    ", grid[y][x] );
+                if (grd[y][x] != 0) {
+                    System.out.printf("%3d    ", grd[y][x] );
                 } else {
                     System.out.printf("%3s    ", ".");
                 }
             }
             System.out.println("|");
         }
-        for (int x = 0; x < grid[0].length; x++) {
+        for (int x = 0; x < grd[0].length; x++) {
             System.out.printf("%3s", "+------" );
         }
         System.out.println("+");
@@ -97,51 +132,57 @@ public class gridPuzzle {
     }
 
     // ------------ calculations ------------
-    void solve(){
+    // recursive Depth-first-searching algorithm to find a solution grid
+    private void solve(){
         if (curr > rows * cols){
             solCount++;
-            printGrid();
+            printGrid(grid);
         }
-        ArrayList<int[]> opt = findOptions(pos[0], pos[1]);
-        while (opt.size() > 0 && (solCount == 0 || printAllSolutions)){
-            for (int k = 0; k < opt.size(); k++ ){
+        // obtain the options (in a possibly randomized order)
+        ArrayList<int[]> options = findOptions(pos[0], pos[1]);
+        if (options.size() > 0 && (solCount == 0 || printAllSolutions)){
+            for (int[] option : options) {
                 int[] pre = pos;
-                pos = opt.get(k);
+                pos = option;
                 grid[pos[0]][pos[1]] = curr;
+
                 curr++;
                 // recurse
                 solve();
-//                if (solCount == 0) {
-//                    printGrid();
-//                }
+                curr--;
+
+                if (solCount == 0 && verbose) {
+                    printGrid(grid);
+                    float percent = 100 * (float) curr /((float)rows*(float)cols);
+                    System.out.println("peak-value " + curr + ":\t" + String.format("%.1f", percent)
+                    + "%\n");
+                }
                 // reset
                 grid[pos[0]][pos[1]] = 0;
                 pos = pre;
-                curr--;
             }
-            break;
         }
     }
 
-
     // ------------ Options methods ------------
-    ArrayList<int[]> findOptions(int y, int x) {
+    private ArrayList<int[]> findOptions(int y, int x) {
         ArrayList<int[]> options = new ArrayList<>();
         if (randomizeSolution){
             shuffleArray(relMoves);
         }
-        for (int i = 0; i < relMoves.length; i++) {
-            if (y + relMoves[i][0] >= 0 && y + relMoves[i][0] < rows && x + relMoves[i][1] >= 0 && x + relMoves[i][1] < cols
-                    && grid[y + relMoves[i][0]][x + relMoves[i][1]] == 0) {
-                int[] opt = {y + relMoves[i][0], x + relMoves[i][1]};
+        for (int[] relMove : relMoves) {
+            if (y + relMove[0] >= 0 && y + relMove[0] < rows && x + relMove[1] >= 0 && x + relMove[1] < cols
+                    && ((grid[y + relMove[0]][x + relMove[1]] == 0 && challengeGrid[y + relMove[0]][x + relMove[1]] == 0 && !challengeNums.contains(curr))
+                    || (grid[y + relMove[0]][x + relMove[1]] == 0 && challengeGrid[y + relMove[0]][x + relMove[1]] == curr))) {
+                int[] opt = {y + relMove[0], x + relMove[1]};
                 options.add(opt);
             }
         }
         return options;
     }
 
-    // ------------ array shuffle ------------
-    static void shuffleArray(Object[] ar)
+    // ------------ array operations ------------
+    private static void shuffleArray(Object[] ar)
     {
         Random rnd = new Random();
         for (int i = ar.length - 1; i > 0; i--)
@@ -153,12 +194,24 @@ public class gridPuzzle {
         }
     }
 
+    private static void rotateArray(Object[] ar, int shift)
+    {
+        Object[] tmp = ar.clone();
+        for (int i = 0; i < ar.length; i++)
+        {
+            int index = (i + shift) % ar.length;
+            ar[i] = tmp[index];
+        }
+    }
+
+    // ------------ array operations ------------
     public static void main(String[] args){
         long startingTime = System.currentTimeMillis();
 
         // gridPuzzle( NROF_ROWS, NROF_COLS, STARTING_ROW, STARTING_COL);
-        // starting positions start from 1.
-        gridPuzzle gp = new gridPuzzle(6, 6, 1, 1);
+        // starting positions start from 0.
+        gridPuzzle gp = new gridPuzzle(7, 7, 0, 0);
+        gp.verbose = true;
         gp.run();
 
         // Running time stuff
