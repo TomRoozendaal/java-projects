@@ -19,7 +19,7 @@ public class gridPuzzle {
     private int rows, cols;
 
     private int curr;
-    private int solCount;
+    private int solCount = 0;
 
     // starting position
     private int[] pos = new int[2];
@@ -33,7 +33,7 @@ public class gridPuzzle {
     private int[][] relMoves = {{2, -2},{0, -3},{-2, -2},{-3, 0},{-2, 2},{0, 3},{2, 2},{3, 0}};
 
     // rotate the elements of the relMoves array
-    private int arrayShift = new Random().nextInt(relMoves.length);
+    int arrayShift = 0;
     // randomize the initial conditions for looking
     // COULD POTENTIALLY INCREASE COMPUTATION TIME
     boolean randomInit = false;
@@ -49,60 +49,106 @@ public class gridPuzzle {
     // ! - VERY TIME CONSUMING FOR LARGE GRID SIZES
     boolean printAllSolutions = false;
 
+    // ------------ constructors ------------
     private gridPuzzle(int rows, int cols, int startingRow, int startingCol) {
         this.rows = rows;
         this.cols = cols;
         this.pos[0] = startingCol;
         this.pos[1] = startingRow;
 
+        this.curr = 1;
+
+        this.grid = new int[rows][cols];
+        this.grid[pos[0]][pos[1]] = curr;
+        this.challengeGrid = new int[rows][cols];
+        this.challengeGrid[pos[0]][pos[1]] = curr;
+
+        this.curr++;
+    }
+    // you can use the challenge grid to define a grid that needs to be solved
+    private gridPuzzle(int[][] challengeGrid) {
+        this.rows = challengeGrid.length;
+        this.cols = challengeGrid[0].length;
+
+        for (int x = 0; x < challengeGrid[0].length; x++){
+            for (int y = 0; y < challengeGrid.length; y++){
+                int p = challengeGrid[y][x];
+                if (p != 0) {
+                    if (!this.challengeNums.contains(p)) {
+                        this.challengeNums.add(p);
+                    } else {
+                        throw new IllegalArgumentException("Elements in the challenge grid cannot occur multiple times!");
+                    }
+                }
+                if (p == 1){
+                    this.pos[0] = y;
+                    this.pos[1] = x;
+                }
+            }
+        }
+        this.challengeGrid = challengeGrid;
+
         this.solCount = 0;
         this.curr = 1;
-        this.grid = new int[rows][cols];
-        grid[pos[0]][pos[1]] = curr;
+        this.grid = new int[this.rows][this.cols];
+        this.grid[pos[0]][pos[1]] = curr;
 
-        // you can use the challenge grid to 'lock' certain cells with a value
-        this.challengeGrid = new int[grid.length][];
-        for(int i = 0; i < grid.length; i++)
-            this.challengeGrid[i] = grid[i].clone();
         this.curr++;
     }
 
+    // ------------ run ------------
     private void run() {
         if (randomInit){
             shuffleArray(relMoves);
         } else if(arrayShift != 0){
             rotateArray(relMoves, arrayShift);
-            System.out.println("relative moves: " + Arrays.deepToString(relMoves));
-        } else {
-            System.out.println("relative moves: " + Arrays.deepToString(relMoves));
         }
 
-        setupChallengeGrid();
-        printGrid(challengeGrid);
         solve();
 
         if (solCount == 1){
             System.out.println("finished, solution found.");
         } else if (solCount > 1){
-            System.out.println("finished, solutions: " + solCount + ".");
+            System.out.println("finished, nrof solutions: " + solCount + ".");
         } else {
             System.out.println("finished, no solutions found.");
         }
     }
     // ------------ misc ------------
-    private void setupChallengeGrid(){
-        //challengeGrid[2][4] = 25;
-
-        for (int x = 0; x < challengeGrid[0].length; x++) {
-            for (int y = 0; y < challengeGrid.length; y++) {
-                int p = challengeGrid[y][x];
-                if (p != 0) {
-                    challengeNums.add(p);
+    // print the currently calculated grid
+    private void printGrid(){
+        for (int x = 0; x < grid[0].length; x++) {
+            System.out.printf("%3s", "+------" );
+        }
+        System.out.println("+");
+        for (int y = 0; y < grid.length; y++) {
+            if (y % rows == 0 && y != 0) {
+                System.out.println("-------------------------");
+            }
+            for (int x = 0; x < grid[0].length; x++) {
+                if (x % cols == 0) {
+                    System.out.print("| ");
+                }
+                if (challengeGrid[y][x] != 0 && grid[y][x] != 0){
+                    System.out.printf("[%3d]  ", grid[y][x] );
+                } else if (challengeGrid[y][x] != 0){
+                    System.out.printf("{%3d}  ", challengeGrid[y][x] );
+                } else if (grid[y][x] != 0){
+                    System.out.printf(" %3d   ", grid[y][x] );
+                } else {
+                    System.out.printf(" %3s   ", ".");
                 }
             }
+            System.out.println("|");
         }
+        for (int x = 0; x < grid[0].length; x++) {
+            System.out.printf("%3s", "+------" );
+        }
+        System.out.println("+");
+        System.out.println();
     }
 
+    // print a specific grid
     private void printGrid(int[][] grd){
         for (int x = 0; x < grd[0].length; x++) {
             System.out.printf("%3s", "+------" );
@@ -136,7 +182,7 @@ public class gridPuzzle {
     private void solve(){
         if (curr > rows * cols){
             solCount++;
-            printGrid(grid);
+            printGrid();
         }
         // obtain the options (in a possibly randomized order)
         ArrayList<int[]> options = findOptions(pos[0], pos[1]);
@@ -152,7 +198,7 @@ public class gridPuzzle {
                 curr--;
 
                 if (solCount == 0 && verbose) {
-                    printGrid(grid);
+                    printGrid();
                     float percent = 100 * (float) curr /((float)rows*(float)cols);
                     System.out.println("peak-value " + curr + ":\t" + String.format("%.1f", percent)
                     + "%\n");
@@ -209,10 +255,26 @@ public class gridPuzzle {
         long startingTime = System.currentTimeMillis();
 
         // gridPuzzle( NROF_ROWS, NROF_COLS, STARTING_ROW, STARTING_COL);
-        // starting positions start from 0.
-        gridPuzzle gp = new gridPuzzle(7, 7, 0, 0);
-        gp.verbose = true;
-        gp.run();
+//        gridPuzzle gp = new gridPuzzle(10, 10, 0, 0);
+//        gp.printGrid(gp.challengeGrid);
+//        gp.verbose = false;
+//        gp.arrayShift = 0; //new Random().nextInt(gp.relMoves.length);
+//        gp.run();
+
+        // gridPuzzle( int[][] challengeGrid );
+        int[][] cG = {
+                {0, 1, 0, 0, 0},
+                {0, 0, 0, 0, 0},
+                {0, 0, 25, 0, 0},
+                {0, 0, 0, 0, 0},
+                {0, 0, 0, 0, 0},
+                {0, 0, 0, 0, 7}};
+        gridPuzzle gp2 = new gridPuzzle(cG);
+        System.out.println("relative moves: " + Arrays.deepToString(gp2.relMoves));
+        gp2.verbose = true;
+        gp2.arrayShift = new Random().nextInt(gp2.relMoves.length);
+        gp2.run();
+
 
         // Running time stuff
         long totalTime = (System.currentTimeMillis() - startingTime);
