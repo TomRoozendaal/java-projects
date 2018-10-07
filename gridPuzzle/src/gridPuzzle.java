@@ -20,34 +20,47 @@ public class gridPuzzle {
 
     private int curr;
     private int solCount = 0;
+    private int backtrackCount = 0;
 
-    // starting position
+    //  player position
     private int[] pos = new int[2];
     /*
      *  relMoves is the array that contains the possible relative moves a player could make.
-     *
-     *  star pattern:           {{2, -2},{0, -3},{-2, -2},{-3, 0},{-2, 2},{0, 3},{2, 2},{3, 0}};
-     *  horsing (chess):        {{-1, -2},{-2, -1},{-2, 1},{-1, 2},{1, 2},{2, 1},{2, -1},{1, -2}};
-     *  moonwalk:               {{-1, 0},{0, -1},{2, 2}}
+     *  Some examples:
+     *  Star pattern:           {{2, -2},{0, -3},{-2, -2},{-3, 0},{-2, 2},{0, 3},{2, 2},{3, 0}};
+     *  Horsing (chess):        {{-1, -2},{-2, -1},{-2, 1},{-1, 2},{1, 2},{2, 1},{2, -1},{1, -2}};
+     *  Moonwalk:               {{-1, 0},{0, -1},{2, 2}}
      */
     private int[][] relMoves = {{2, -2},{0, -3},{-2, -2},{-3, 0},{-2, 2},{0, 3},{2, 2},{3, 0}};
 
-    // rotate the elements of the relMoves array
-    int shiftRelMoves = 0;
-    // randomize the initial conditions for looking
-    // COULD POTENTIALLY INCREASE COMPUTATION TIME
-    boolean randomInit = false;
-    boolean verbose = false;
+    //  Rotate the elements of the relMoves array
+    private int shiftRelMoves = 0;
+    /*  Print extra information when backtracking after a recursive call
+     *  options:
+     *      0:      Do not print anything (default);
+     *      2:      Print the peak-value after backtracking;
+     *      3:      Print the grid and the peak-value after backtracking;
+     *  verbose > 0 will increase running time due to printing
+     */
+    private int verbose = 0;
 
-    // enabling this is probably not a good idea: repeating moves (which occurs more without randomization)
-    // usually spreads out the occupied cells in the grid more. this leaves more room for
-    // the player in a later states to move to.
-    // ! - WILL MOST LIKELY INCREASE COMPUTATION TIME
-    boolean randomizeSolution = false;
+    /*
+     *  NOTE: Randomization options do NOT benefit the computation time of the grid.
+     *  Repeating moves (which occurs more often without any randomization)
+     *  usually spreads out the occupied cells in the grid more. This leaves more room for
+     *  the player in later states to move to.
+     */
 
-    // print all possible solutions
-    // ! - VERY TIME CONSUMING FOR LARGE GRID SIZES
-    boolean printAllSolutions = false;
+    //  randomize relative moves elements before computation
+    //  !!! - WILL MOST LIKELY INCREASE COMPUTATION TIME
+    private boolean randomInit = false;
+    //  randomize relative moves elements at every position
+    //  !!! - WILL MOST LIKELY INCREASE COMPUTATION TIME
+    private boolean randomizeSolution = false;
+
+    //  print all possible solutions
+    //  !!! - VERY TIME CONSUMING FOR LARGE GRID SIZES
+    private boolean printAllSolutions = false;
 
     // ------------ constructors ------------
     private gridPuzzle(int rows, int cols, int startingRow, int startingCol) {
@@ -109,11 +122,11 @@ public class gridPuzzle {
         solve();
 
         if (solCount == 1){
-            System.out.println("finished, solution found.");
+            System.out.println("Finished, solution found.");
         } else if (solCount > 1){
-            System.out.println("finished, nrof solutions: " + solCount + ".");
+            System.out.println("Finished, nrof solutions: " + solCount + ".");
         } else {
-            System.out.println("finished, no solutions found.");
+            System.out.println("Finished, no solutions found.");
         }
     }
     // ------------ misc ------------
@@ -123,17 +136,19 @@ public class gridPuzzle {
 
     // print the currently calculated grid
     private void printGrid(){
+        System.out.print("+-");
         for (int x = 0; x < grid[0].length; x++) {
-            System.out.printf("%3s", "+------" );
+            System.out.printf("%3s", "------+" );
         }
-        System.out.println("+");
+        System.out.println();
+
         for (int y = 0; y < grid.length; y++) {
             if (y % rows == 0 && y != 0) {
                 System.out.println("-------------------------");
             }
             for (int x = 0; x < grid[0].length; x++) {
                 if (x % cols == 0) {
-                    System.out.print("|");
+                    System.out.print("| ");
                 }
                 if (x == cols - 1){
                     if (challengeGrid[y][x] != 0 && grid[y][x] != 0){
@@ -159,26 +174,28 @@ public class gridPuzzle {
             }
             System.out.println(" |");
         }
+        System.out.print("+-");
         for (int x = 0; x < grid[0].length; x++) {
-            System.out.printf("%3s", "+------" );
+            System.out.printf("%3s", "------+" );
         }
-        System.out.println("+");
-        System.out.println();
+        System.out.println("\n");
     }
 
     // print a specific grid
     private static void printGrid(int[][] grd){
+        System.out.print("+-");
         for (int x = 0; x < grd[0].length; x++) {
-            System.out.printf("%3s", "+------" );
+            System.out.printf("%3s", "------+" );
         }
-        System.out.println("+");
+        System.out.println();
+
         for (int y = 0; y < grd.length; y++) {
             if (y % grd.length == 0 && y != 0) {
                 System.out.println("-------------------------");
             }
             for (int x = 0; x < grd[0].length; x++) {
                 if (x % grd[0].length == 0) {
-                    System.out.print("|");
+                    System.out.print("| ");
                 }
                 if (x == grd[0].length - 1) {
                     if (grd[y][x] != 0) {
@@ -197,11 +214,11 @@ public class gridPuzzle {
             }
             System.out.println(" |");
         }
+        System.out.print("+-");
         for (int x = 0; x < grd[0].length; x++) {
-            System.out.printf("%3s", "+------" );
+            System.out.printf("%3s", "------+" );
         }
-        System.out.println("+");
-        System.out.println();
+        System.out.println("\n");
     }
 
     // ------------ calculations ------------
@@ -222,10 +239,14 @@ public class gridPuzzle {
                 curr++;
                 // recurse
                 solve();
+                // backtrack
+                backtrackCount++;
                 curr--;
 
-                if (solCount == 0 && verbose) {
-                    printGrid();
+                if (solCount == 0 && verbose > 0) {
+                    if (verbose > 1) {
+                        printGrid();
+                    }
                     float percent = 100 * (float) curr /((float)rows*(float)cols);
                     System.out.println("peak-value " + curr + ":\t" + String.format("%.1f", percent)
                     + "%\n");
@@ -281,14 +302,16 @@ public class gridPuzzle {
     public static void main(String[] args){
         long startingTime = System.currentTimeMillis();
 
-        // two constructors for gridPuzzle:
-        // gridPuzzle( NROF_ROWS, NROF_COLS, STARTING_ROW, STARTING_COL);
-        // gridPuzzle( int[][] challengeGrid );
+        //  Two constructors for gridPuzzle:
+        //      gridPuzzle( NROF_ROWS, NROF_COLS, STARTING_ROW, STARTING_COL);
+        //      gridPuzzle( int[][] challengeGrid );
         gridPuzzle gp;
-        int doGrid = 3;
+        int doGrid = 4;
         switch(doGrid){
             case 1:
                 gp = new gridPuzzle(7, 7, 0, 0);
+                //  Method that prints any 2D integer array
+                printGrid(gp.grid);
                 gp.run();
                 break;
             case 2:
@@ -300,8 +323,8 @@ public class gridPuzzle {
                         {0, 0,  0,  0,  0}};
                 gp = new gridPuzzle(cG2);
                 System.out.println("relative moves: " + Arrays.deepToString(gp.relMoves));
-                // the shiftRelMoves integer rotates the relative moves array over its value
-                // here we rotate the array by a random amount
+                //  The shiftRelMoves integer rotates the relative moves array over its value
+                //  Here we rotate the array by a random amount
                 gp.shiftRelMoves = new Random().nextInt(gp.relMoves.length);
                 gp.run();
                 break;
@@ -314,27 +337,38 @@ public class gridPuzzle {
                         {0, 0,  0,  0,  0}};
                 printGrid(cG3);
                 gp = new gridPuzzle(cG3);
-                // We can change the relative moves array by using changeRelMoves();
+                //  We can change the relative moves array by using changeRelMoves();
                 int[][] moves = {{-1, -2},{-2, -1},{-2, 1},{-1, 2},{1, 2},{2, 1},{2, -1},{1, -2}};
                 gp.changeRelMoves(moves);
-                // the verbose option prints the grid when the recursive algorithm backtracks, def = false;
-                // this will increase calculation time due to the printing
-                gp.verbose = true;
+                //  The verbose option prints the grid when the recursive algorithm backtracks;
+                //      0:      do not print anything (default)
+                //      1:      print the peak-value after backtracking
+                //      2:      print the grid and the peak-value after backtracking
+                //  This will increase calculation time due to the printing
+                gp.verbose = 2;
                 gp.run();
                 break;
+            case 4:
+                //  The ultimate challenge
+                //  NOTE: The right relMoves array can make a big difference in computation time on large grids,
+                //  the relMoves are initialized in such a way that the grid below will 'get lucky'
+                gp = new gridPuzzle(10, 10, 0, 0);
+                gp.run();
+                System.out.println( "Mistaken attempts: " + gp.backtrackCount );
+                break;
             default:
-                System.out.println("no grid found");
+                System.out.println("No grid found");
                 break;
         }
 
-        // Running time stuff
+        //  Running time stuff
         long totalTime = (System.currentTimeMillis() - startingTime);
         long millis = totalTime % 1000;
         long second = (totalTime / 1000) % 60;
         long minute = (totalTime / (1000 * 60)) % 60;
         long hour = (totalTime / (1000 * 60 * 60)) % 24;
         String time = String.format("%02d:%02d:%02d.%d", hour, minute, second, millis);
-        System.out.println("running time: " + time);
+        System.out.println("Running time: " + time);
     }
 }
 
