@@ -104,26 +104,30 @@ public class Rummikub_DP {
 
                         // Match of three colors
                         if (x > 0 && y > 0 && z > 0
-                                && R.get(x - 1) == G.get(y - 1) && G.get(y - 1) == B.get(z - 1)
+                                && R.get(x - 1) == G.get(y - 1)
+                                && G.get(y - 1) == B.get(z - 1)
                                 && T[x - 1][y - 1][z - 1]) {
                             able = true;
                         }
 
                         // Red Run
                         for (int i = 1; i <= x - 2; i++) {
-                            if (validRun(i - 1, x - 1, R) && T[i - 1][y][z]) {
+                            if (validRun(i - 1, x - 1, R)
+                                    && T[i - 1][y][z]) {
                                 able = true;
                             }
                         }
                         // Green Run
                         for (int i = 1; i <= y - 2; i++) {
-                            if (validRun(i - 1, y - 1, G) && T[x][i - 1][z]) {
+                            if (validRun(i - 1, y - 1, G)
+                                    && T[x][i - 1][z]) {
                                 able = true;
                             }
                         }
                         // Blue Run
                         for (int i = 1; i <= z - 2; i++) {
-                            if (validRun(i - 1, z - 1, B) && T[x][y][i - 1]) {
+                            if (validRun(i - 1, z - 1, B)
+                                    && T[x][y][i - 1]) {
                                 able = true;
                             }
                         }
@@ -135,15 +139,20 @@ public class Rummikub_DP {
         }
         //System.out.println(Arrays.deepToString(T));
 
-        // calculate solution partition
+        // calculate solution from recurrence variable
+
         int pR = nR - 1;
         int pG = nG - 1;
         int pB = nB - 1;
+        // if there exists a solution, construct one
         if (T[pR][pG][pB]) {
             while (pR != 0 || pG != 0 || pB != 0) {
                 // check for match
                 if (pR > 0 && pG > 0 && pB > 0
-                        && T[pR - 1][pG - 1][pB - 1]) {
+                        && T[pR - 1][pG - 1][pB - 1]
+                        && R.get(pR - 1) == G.get(pG - 1)
+                        && G.get(pG - 1) == B.get(pB - 1)) {
+                    // there exists a match, now find it!
                     System.out.print("Match:   \t");
                     System.out.print(R.get(pR - 1) + " ");
                     System.out.print(G.get(pG - 1) + " ");
@@ -155,7 +164,8 @@ public class Rummikub_DP {
                 }
                 // check for Red Run
                 for (int r = 1; r <= pR - 2; r++) {
-                    if (T[r - 1][pG][pB]) {
+                    if (T[r - 1][pG][pB]
+                            && validRun(r - 1, pR - 1, R)) {
                         System.out.print("Red run: \t");
                         printList(r - 1, pR, R);
                         pR = r - 1;
@@ -163,7 +173,8 @@ public class Rummikub_DP {
                 }
                 // check for Green Run
                 for (int g = 1; g <= pG - 2; g++) {
-                    if (T[pR][g - 1][pB]) {
+                    if (T[pR][g - 1][pB]
+                            && validRun(g - 1, pG - 1, G)) {
                         System.out.print("Green run: \t");
                         printList(g - 1, pG, G);
                         pG = g - 1;
@@ -171,7 +182,8 @@ public class Rummikub_DP {
                 }
                 // check for Blue Run
                 for (int b = 1; b <= pB - 2; b++) {
-                    if (T[pR][pG][b - 1]) {
+                    if (T[pR][pG][b - 1]
+                            && validRun(b - 1, pB - 1, B)) {
                         System.out.print("Blue run: \t");
                         printList(b - 1, pB, B);
                         pB = b - 1;
@@ -187,7 +199,7 @@ public class Rummikub_DP {
     public static void main(String[] args) {
         Rummikub_DP rk = new Rummikub_DP();
         int[] red = {
-                1, 2, 3, 4, 5, 6,
+                1, 2, 3, 4, 5, 6, 7, 8, 9, 10
         };
         int[] green = {
                 2, 3, 4, 5, 6
